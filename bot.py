@@ -3,7 +3,7 @@ import re
 import os
 import requests
 import traceback
-from PIL import Image, ImageFilter, ImageEnhance
+from PIL import Image, ImageEnhance
 import io
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -11,11 +11,11 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 def preprocess_image(image):
     image = image.convert('L')
-    image = image.filter(ImageFilter.MEDIAN_FILTER)
     enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(3.0)
+    image = enhancer.enhance(3.5)
     enhancer = ImageEnhance.Sharpness(image)
     image = enhancer.enhance(3.0)
+    image = image.resize((image.width * 2, image.height * 2), Image.LANCZOS)
     return image
 
 def extract_imeis(text):
@@ -60,7 +60,7 @@ Samsung Galaxy A17 4G
             bot.send_message(message.chat.id, result, parse_mode='Markdown')
     except Exception as e:
         error = traceback.format_exc()
-        bot.reply_to(message, f"❌ Lỗi: {str(e)}\n\n{error[:300]}")
+        bot.reply_to(message, f"❌ Lỗi: {str(e)}")
 
-print("Bot debug đang chạy...")
+print("Bot đang chạy...")
 bot.infinity_polling()
