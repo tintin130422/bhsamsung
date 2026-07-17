@@ -1,1 +1,1 @@
-worker: python BH SAMSUNG.PY
+worker: python bot.py
