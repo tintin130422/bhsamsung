@@ -23,7 +23,7 @@ def extract_imeis(text):
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
-    bot.reply_to(message, "📸 Đang quét...")
+    bot.reply_to(message, "📸 Đang quét ảnh...")
     try:
         file_info = bot.get_file(message.photo[-1].file_id)
         downloaded = bot.download_file(file_info.file_path)
@@ -43,7 +43,7 @@ def handle_photo(message):
         imeis = extract_imeis(text)
         
         if not imeis:
-            bot.reply_to(message, "❌ Không tìm thấy. Thử chụp từng hộp một.")
+            bot.reply_to(message, "❌ Không tìm thấy IMEI.")
             return
         
         bot.reply_to(message, f"✅ Tìm thấy {len(imeis)} IMEI.")
@@ -59,7 +59,7 @@ Samsung Galaxy A17 4G
 """
             bot.send_message(message.chat.id, result, parse_mode='Markdown')
     except:
-        bot.reply_to(message, "❌ Lỗi.")
+        bot.reply_to(message, "❌ Lỗi xử lý.")
 
-print("Bot đang chạy...")
+print("Bot OCR đang chạy...")
 bot.infinity_polling()
