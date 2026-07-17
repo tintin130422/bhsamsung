@@ -2,57 +2,53 @@ import telebot
 import re
 import os
 import requests
-from PIL import Image, ImageEnhance
-import io
+import base64
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
 
-def preprocess_image(image):
-    image = image.convert('L')
-    enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(4.0)
-    enhancer = ImageEnhance.Sharpness(image)
-    image = enhancer.enhance(4.0)
-    image = image.resize((image.width * 3, image.height * 3), Image.LANCZOS)
-    return image
+VISION_KEY = "AIzaSyDGz0II5ZRS2TNKMxFbMmHP6re7_-wOy2A"
 
 def extract_imeis(text):
     return re.findall(r'\b\d{15}\b', text)
 
+@bot.message_handler(commands=['start'])
+def start(message):
+    bot.send_message(message.chat.id, "🤖 Bot Check Bảo Hành Samsung (Google Vision)\nGửi ảnh tem IMEI.")
+
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
-    bot.reply_to(message, "📸 Đang quét ảnh...")
+    bot.reply_to(message, "📸 Đang quét bằng Google Vision...")
     try:
         file_info = bot.get_file(message.photo[-1].file_id)
         downloaded = bot.download_file(file_info.file_path)
         
-        img = Image.open(io.BytesIO(downloaded))
-        processed = preprocess_image(img)
+        # Convert to base64
+        image_base64 = base64.b64encode(downloaded).decode('utf-8')
         
-        # OCR.space with strong config
-        response = requests.post(
-            'https://api.ocr.space/parse/image',
-            files={'filename': ('image.jpg', processed.tobytes(), 'image/jpeg')},
-            data={
-                'apikey': 'K89104293888957',
-                'language': 'eng',
-                'isOverlayRequired': 'false',
-                'scale': 'true',
-                'OCREngine': '2',
-                'detectOrientation': 'true'
-            }
-        )
+        url = f"https://vision.googleapis.com/v1/images:annotate?key={VISION_KEY}"
+        payload = {
+            "requests": [
+                {
+                    "image": {"content": image_base64},
+                    "features": [{"type": "TEXT_DETECTION", "maxResults": 20}]
+                }
+            ]
+        }
         
+        response = requests.post(url, json=payload)
         data = response.json()
+        
         text = ""
-        if data.get('ParsedResults'):
-            text = data['ParsedResults'][0].get('ParsedText', '')
+        try:
+            text = data['responses'][0]['textAnnotations'][0]['description']
+        except:
+            pass
         
         imeis = extract_imeis(text)
         
         if not imeis:
-            bot.reply_to(message, "❌ Không tìm thấy IMEI. Thử chụp từng tem một.")
+            bot.reply_to(message, "❌ Không tìm thấy IMEI. Thử chụp rõ, zoom vào tem.")
             return
         
         bot.reply_to(message, f"✅ Tìm thấy {len(imeis)} IMEI.")
@@ -70,5 +66,5 @@ Samsung Galaxy A17 4G
     except Exception as e:
         bot.reply_to(message, f"❌ Lỗi: {str(e)}")
 
-print("Bot OCR tối ưu đang chạy...")
+print("Bot Google Vision đang chạy...")
 bot.infinity_polling()
