@@ -2,7 +2,6 @@ import telebot
 import re
 import os
 import requests
-import traceback
 from PIL import Image, ImageEnhance
 import io
 
@@ -12,10 +11,10 @@ bot = telebot.TeleBot(BOT_TOKEN)
 def preprocess_image(image):
     image = image.convert('L')
     enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(3.5)
+    image = enhancer.enhance(4.0)
     enhancer = ImageEnhance.Sharpness(image)
-    image = enhancer.enhance(3.0)
-    image = image.resize((image.width * 2, image.height * 2), Image.LANCZOS)
+    image = enhancer.enhance(4.0)
+    image = image.resize((image.width * 3, image.height * 3), Image.LANCZOS)
     return image
 
 def extract_imeis(text):
@@ -31,19 +30,29 @@ def handle_photo(message):
         img = Image.open(io.BytesIO(downloaded))
         processed = preprocess_image(img)
         
+        # OCR.space with strong config
         response = requests.post(
             'https://api.ocr.space/parse/image',
             files={'filename': ('image.jpg', processed.tobytes(), 'image/jpeg')},
-            data={'apikey': 'K89104293888957', 'language': 'eng', 'isOverlayRequired': 'false', 'scale': 'true', 'OCREngine': '2'}
+            data={
+                'apikey': 'K89104293888957',
+                'language': 'eng',
+                'isOverlayRequired': 'false',
+                'scale': 'true',
+                'OCREngine': '2',
+                'detectOrientation': 'true'
+            }
         )
         
         data = response.json()
-        text = data['ParsedResults'][0]['ParsedText'] if data.get('ParsedResults') else ''
+        text = ""
+        if data.get('ParsedResults'):
+            text = data['ParsedResults'][0].get('ParsedText', '')
         
         imeis = extract_imeis(text)
         
         if not imeis:
-            bot.reply_to(message, "❌ Không tìm thấy IMEI.")
+            bot.reply_to(message, "❌ Không tìm thấy IMEI. Thử chụp từng tem một.")
             return
         
         bot.reply_to(message, f"✅ Tìm thấy {len(imeis)} IMEI.")
@@ -59,8 +68,7 @@ Samsung Galaxy A17 4G
 """
             bot.send_message(message.chat.id, result, parse_mode='Markdown')
     except Exception as e:
-        error = traceback.format_exc()
         bot.reply_to(message, f"❌ Lỗi: {str(e)}")
 
-print("Bot đang chạy...")
+print("Bot OCR tối ưu đang chạy...")
 bot.infinity_polling()
